@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert'; // 用於處理 JSON
 
 void main() {
   runApp(MyApp());
@@ -23,14 +25,37 @@ class StudentListPage extends StatefulWidget {
 }
 
 class _StudentListPageState extends State<StudentListPage> {
-  // 存儲學生資料的清單
   List<Map<String, String>> students = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStudents(); // 應用啟動時加載數據
+  }
+
+  // 加載保存的學生資料
+  void _loadStudents() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? studentsJson = prefs.getString('students');
+    if (studentsJson != null) {
+      setState(() {
+        students = List<Map<String, String>>.from(json.decode(studentsJson));
+      });
+    }
+  }
+
+  // 保存學生資料到 SharedPreferences
+  void _saveStudents() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String studentsJson = json.encode(students);
+    await prefs.setString('students', studentsJson);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('學生管理系統'),
+        title: const Text('學生管理系統v0.0.10.12.513'),
       ),
       body: ListView.builder(
         itemCount: students.length,
@@ -42,7 +67,8 @@ class _StudentListPageState extends State<StudentListPage> {
               icon: Icon(Icons.delete),
               onPressed: () {
                 setState(() {
-                  students.removeAt(index); // 刪除學生資料
+                  students.removeAt(index);
+                  _saveStudents(); // 刪除後保存更新
                 });
               },
             ),
@@ -100,6 +126,7 @@ class _StudentListPageState extends State<StudentListPage> {
                       'id': studentId,
                       'name': studentName.isNotEmpty ? studentName : '未設定'
                     });
+                    _saveStudents(); // 新增後保存更新
                   });
                   Navigator.of(context).pop();
                 }
