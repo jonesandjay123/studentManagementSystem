@@ -12,7 +12,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Student Management System',
+      title: '學生管理系統',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -39,7 +39,7 @@ class _StudentListPageState extends State<StudentListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('學生管理系統v0.0.10.12.555'),
+        title: const Text('學生管理系統 v0.0.10.12.0619'),
       ),
       body: ValueListenableBuilder(
         valueListenable: studentsBox.listenable(),
@@ -47,11 +47,29 @@ class _StudentListPageState extends State<StudentListPage> {
           if (box.values.isEmpty) {
             return const Center(child: Text('尚無學生資料'));
           } else {
-            return ListView.builder(
-              itemCount: box.length,
+            // 將數據轉換為列表
+            List<dynamic> studentsList = box.values.toList();
+
+            return ReorderableListView.builder(
+              itemCount: studentsList.length,
+              onReorder: (int oldIndex, int newIndex) {
+                setState(() {
+                  if (newIndex > oldIndex) newIndex -= 1;
+
+                  // 更新本地列表
+                  final movedStudent = studentsList.removeAt(oldIndex);
+                  studentsList.insert(newIndex, movedStudent);
+
+                  // 直接更新 Hive Box 中的項目順序
+                  for (int i = 0; i < studentsList.length; i++) {
+                    box.putAt(i, studentsList[i]);
+                  }
+                });
+              },
               itemBuilder: (context, index) {
-                var student = box.getAt(index) as Map;
+                var student = studentsList[index];
                 return ListTile(
+                  key: ValueKey(student['uniqueKey']),
                   title: Text('學號: ${student['id']}'),
                   subtitle: Text('名稱: ${student['name']}'),
                   trailing: IconButton(
@@ -83,7 +101,8 @@ class _StudentListPageState extends State<StudentListPage> {
   void _addStudent(String studentId, String studentName) {
     final newStudent = {
       'id': studentId,
-      'name': studentName.isNotEmpty ? studentName : '未設定'
+      'name': studentName.isNotEmpty ? studentName : '未設定',
+      'uniqueKey': UniqueKey().toString(),
     };
     studentsBox.add(newStudent); // 每次新增後保存到 Hive
   }
@@ -197,7 +216,8 @@ class _StudentListPageState extends State<StudentListPage> {
   void _editStudent(int index, String studentId, String studentName) {
     final updatedStudent = {
       'id': studentId,
-      'name': studentName.isNotEmpty ? studentName : '未設定'
+      'name': studentName.isNotEmpty ? studentName : '未設定',
+      'uniqueKey': studentsBox.getAt(index)['uniqueKey'],
     };
     studentsBox.putAt(index, updatedStudent); // 更新學生資料
   }
