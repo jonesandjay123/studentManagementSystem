@@ -39,13 +39,13 @@ class _StudentListPageState extends State<StudentListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('學生管理系統v0.0.10.12.530'),
+        title: const Text('學生管理系統v0.0.10.12.555'),
       ),
       body: ValueListenableBuilder(
         valueListenable: studentsBox.listenable(),
         builder: (context, Box box, _) {
           if (box.values.isEmpty) {
-            return Center(child: Text('尚無學生資料'));
+            return const Center(child: Text('尚無學生資料'));
           } else {
             return ListView.builder(
               itemCount: box.length,
@@ -55,11 +55,15 @@ class _StudentListPageState extends State<StudentListPage> {
                   title: Text('學號: ${student['id']}'),
                   subtitle: Text('名稱: ${student['name']}'),
                   trailing: IconButton(
-                    icon: Icon(Icons.delete),
+                    icon: const Icon(Icons.delete),
                     onPressed: () {
                       _deleteStudent(index);
                     },
                   ),
+                  onTap: () {
+                    _showEditStudentDialog(
+                        index, student['id'], student['name']);
+                  },
                 );
               },
             );
@@ -70,7 +74,7 @@ class _StudentListPageState extends State<StudentListPage> {
         onPressed: () {
           _showAddStudentDialog(); // 點擊按鈕時新增學生
         },
-        child: Icon(Icons.add),
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -98,18 +102,18 @@ class _StudentListPageState extends State<StudentListPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('新增學生'),
+          title: const Text('新增學生'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                decoration: InputDecoration(labelText: '學號'),
+                decoration: const InputDecoration(labelText: '學號'),
                 onChanged: (value) {
                   studentId = value;
                 },
               ),
               TextField(
-                decoration: InputDecoration(labelText: '名稱'),
+                decoration: const InputDecoration(labelText: '名稱'),
                 onChanged: (value) {
                   studentName = value;
                 },
@@ -121,7 +125,7 @@ class _StudentListPageState extends State<StudentListPage> {
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: Text('取消'),
+              child: const Text('取消'),
             ),
             TextButton(
               onPressed: () {
@@ -130,11 +134,71 @@ class _StudentListPageState extends State<StudentListPage> {
                   Navigator.of(context).pop();
                 }
               },
-              child: Text('新增'),
+              child: const Text('新增'),
             ),
           ],
         );
       },
     );
+  }
+
+  // 彈出對話框以編輯學生
+  void _showEditStudentDialog(int index, String currentId, String currentName) {
+    String studentId = currentId;
+    String studentName = currentName;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('編輯學生'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                decoration: const InputDecoration(labelText: '學號'),
+                controller: TextEditingController(text: currentId),
+                onChanged: (value) {
+                  studentId = value;
+                },
+              ),
+              TextField(
+                decoration: const InputDecoration(labelText: '名稱'),
+                controller: TextEditingController(text: currentName),
+                onChanged: (value) {
+                  studentName = value;
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (studentId.isNotEmpty) {
+                  _editStudent(index, studentId, studentName);
+                  Navigator.of(context).pop();
+                }
+              },
+              child: const Text('保存'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // 編輯學生資料
+  void _editStudent(int index, String studentId, String studentName) {
+    final updatedStudent = {
+      'id': studentId,
+      'name': studentName.isNotEmpty ? studentName : '未設定'
+    };
+    studentsBox.putAt(index, updatedStudent); // 更新學生資料
   }
 }
