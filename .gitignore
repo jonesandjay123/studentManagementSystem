@@ -45,5 +45,6 @@ app.*.map.json
 *.lock
 build/
 .flutter-plugins
+.flutter-plugins-dependencies
 .dart_tool/
 ios/Pods/
