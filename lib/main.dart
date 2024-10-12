@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert'; // 用於處理 JSON
+import 'package:hive_flutter/hive_flutter.dart';
 
-void main() {
+void main() async {
+  // 初始化 Hive
+  await Hive.initFlutter();
+  await Hive.openBox('studentsBox');
   runApp(MyApp());
 }
 
@@ -25,54 +27,43 @@ class StudentListPage extends StatefulWidget {
 }
 
 class _StudentListPageState extends State<StudentListPage> {
-  List<Map<String, String>> students = [];
+  late Box studentsBox;
 
   @override
   void initState() {
     super.initState();
-    _loadStudents(); // 應用啟動時加載數據
-  }
-
-  // 加載保存的學生資料
-  void _loadStudents() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? studentsJson = prefs.getString('students');
-    if (studentsJson != null) {
-      setState(() {
-        students = List<Map<String, String>>.from(json.decode(studentsJson));
-      });
-    }
-  }
-
-  // 保存學生資料到 SharedPreferences
-  void _saveStudents() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String studentsJson = json.encode(students);
-    await prefs.setString('students', studentsJson);
+    studentsBox = Hive.box('studentsBox');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('學生管理系統v0.0.10.12.513'),
+        title: const Text('學生管理系統v0.0.10.12.530'),
       ),
-      body: ListView.builder(
-        itemCount: students.length,
-        itemBuilder: (context, index) {
-          return ListTile(
-            title: Text('學號: ${students[index]['id']}'),
-            subtitle: Text('名稱: ${students[index]['name'] ?? '未設定'}'),
-            trailing: IconButton(
-              icon: Icon(Icons.delete),
-              onPressed: () {
-                setState(() {
-                  students.removeAt(index);
-                  _saveStudents(); // 刪除後保存更新
-                });
+      body: ValueListenableBuilder(
+        valueListenable: studentsBox.listenable(),
+        builder: (context, Box box, _) {
+          if (box.values.isEmpty) {
+            return Center(child: Text('尚無學生資料'));
+          } else {
+            return ListView.builder(
+              itemCount: box.length,
+              itemBuilder: (context, index) {
+                var student = box.getAt(index) as Map;
+                return ListTile(
+                  title: Text('學號: ${student['id']}'),
+                  subtitle: Text('名稱: ${student['name']}'),
+                  trailing: IconButton(
+                    icon: Icon(Icons.delete),
+                    onPressed: () {
+                      _deleteStudent(index);
+                    },
+                  ),
+                );
               },
-            ),
-          );
+            );
+          }
         },
       ),
       floatingActionButton: FloatingActionButton(
@@ -82,6 +73,20 @@ class _StudentListPageState extends State<StudentListPage> {
         child: Icon(Icons.add),
       ),
     );
+  }
+
+  // 新增學生資料
+  void _addStudent(String studentId, String studentName) {
+    final newStudent = {
+      'id': studentId,
+      'name': studentName.isNotEmpty ? studentName : '未設定'
+    };
+    studentsBox.add(newStudent); // 每次新增後保存到 Hive
+  }
+
+  // 刪除學生資料
+  void _deleteStudent(int index) {
+    studentsBox.deleteAt(index); // 每次刪除後保存更新
   }
 
   // 彈出對話框以新增學生
@@ -121,13 +126,7 @@ class _StudentListPageState extends State<StudentListPage> {
             TextButton(
               onPressed: () {
                 if (studentId.isNotEmpty) {
-                  setState(() {
-                    students.add({
-                      'id': studentId,
-                      'name': studentName.isNotEmpty ? studentName : '未設定'
-                    });
-                    _saveStudents(); // 新增後保存更新
-                  });
+                  _addStudent(studentId, studentName);
                   Navigator.of(context).pop();
                 }
               },
